@@ -20,10 +20,10 @@
     }
 
     * {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
 
     body {
       background-color: var(--page-bg-color);
@@ -631,7 +631,7 @@
     document.getElementById("copyrightYear").textContent = new Date().getFullYear();
 
     const STREAM_URL = "https://stream.doomstew.com/stream";
-    const STATUS_URL = "https://stream.doomstew.com/status-json.xsl";
+    const STATUS_URL = "https://stream.doomstew.com/status.xsl";
 
     const audio = document.getElementById("radioAudio");
     const playBtn = document.getElementById("playBtn");
@@ -650,7 +650,6 @@
     function renderTrackMetadata(source) {
       if (!source) return;
 
-      // Icecast 2.5 nests Ogg Vorbis tags inside source.metadata
       const meta = source.metadata || {};
       const rawTitle = (meta.title || source.title || source.yp_currently_playing || "").trim();
       const rawArtist = (meta.artist || source.artist || "").trim();
@@ -738,14 +737,26 @@
           cache: "no-store"
         });
         if (!res.ok) throw new Error("Server unreachable");
-        const data = await res.json();
-        const rawSource = data && data.icestats ? data.icestats.source : null;
-        const sources = Array.isArray(rawSource) ? rawSource : (rawSource ? [rawSource] : []);
-        const source = sources.find(s => s && s.listenurl && s.listenurl.endsWith("/stream")) || sources[0];
+        const html = await res.text();
+        const doc = new DOMParser().parseFromString(html, "text/html");
 
-        if (source) {
+        let currentSong = "";
+        doc.querySelectorAll("tr").forEach((row) => {
+          const cells = row.querySelectorAll("td");
+          if (cells.length >= 2) {
+            const label = cells[0].textContent.trim().toLowerCase();
+            const val = cells[1].textContent.trim();
+            if (label.includes("currently playing") || label.includes("current song") || label === "title:") {
+              currentSong = val;
+            }
+          }
+        });
+
+        const isLive = html.includes("/stream") || currentSong.length > 0;
+
+        if (isLive) {
           failedPolls = 0;
-          setOnAirState(true, source);
+          setOnAirState(true, { title: currentSong });
         } else {
           failedPolls++;
           if (failedPolls >= 3) {
