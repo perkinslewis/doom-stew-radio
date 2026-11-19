@@ -215,16 +215,26 @@
 
     .track-title {
       font-size: 15px;
-      font-weight: 600;
+      font-weight: 700;
+      color: var(--text-main);
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
     }
 
+    .track-artist {
+      font-size: 13px;
+      color: #cccccc;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-top: 1px;
+    }
+
     .player-status {
-      font-size: 12px;
+      font-size: 11.5px;
       color: var(--text-muted);
-      margin-top: 2px;
+      margin-top: 4px;
     }
 
     .volume-row {
@@ -494,6 +504,7 @@
           <div class="track-info">
             <div class="now-playing-label">Now Playing</div>
             <div class="track-title" id="trackTitle">Click Play to Tune In</div>
+            <div class="track-artist" id="trackArtist"></div>
             <div class="player-status" id="playerStatus">Stream Ready (128kbps MP3)</div>
           </div>
         </div>
@@ -544,14 +555,14 @@
 
     </main>
   
-<!-- Footer with Auto-Updating Copyright Year -->
+    <!-- Footer with Auto-Updating Copyright Year -->
     <div>
-	<footer class="footer">
-	      <span>&copy; <span id="copyrightYear"></span> Doom Stew Records</span>
-      <span>Powered by Mixxx &amp; Icecast</span>
-    </footer>
-      </div>
-	  </div>
+      <footer class="footer">
+        <span>&copy; <span id="copyrightYear"></span> Doom Stew Records</span>
+        <span>Powered by Mixxx &amp; Icecast</span>
+      </footer>
+    </div>
+  </div>
 
   <!-- =========================================================
        PROMO / SPONSOR CARDS SECTION (EDIT OR DUPLICATE CARDS)
@@ -608,11 +619,9 @@
         </div>
       </a>
     </div>
-	<br>
+    <br>
   </section>
-  
-	
- 
+
   <!-- Hidden Native Audio Element -->
   <audio id="radioAudio" preload="none"></audio>
 
@@ -626,6 +635,7 @@
     const audio = document.getElementById("radioAudio");
     const playBtn = document.getElementById("playBtn");
     const trackTitle = document.getElementById("trackTitle");
+    const trackArtist = document.getElementById("trackArtist");
     const playerStatus = document.getElementById("playerStatus");
     const volumeSlider = document.getElementById("volumeSlider");
     const directStreamLink = document.getElementById("directStreamLink");
@@ -636,20 +646,54 @@
     audio.volume = volumeSlider.value;
     let isPlaying = false;
 
-    function setOnAirState(isOnline, currentTitle) {
+    function renderTrackMetadata(source) {
+      if (!source) return;
+
+      // Icecast 2.5 may provide separate artist/title fields or combined "Artist - Title"
+      const rawTitle = (source.title || source.yp_currently_playing || "").trim();
+      const rawArtist = (source.artist || "").trim();
+
+      if (rawArtist && rawTitle) {
+        trackTitle.textContent = rawTitle;
+        trackArtist.textContent = rawArtist;
+        trackTitle.title = `${rawArtist} — ${rawTitle}`;
+        trackArtist.title = rawArtist;
+        return;
+      }
+
+      if (rawTitle.includes(" - ")) {
+        const [artistPart, ...songParts] = rawTitle.split(" - ");
+        const songPart = songParts.join(" - ").trim();
+        trackTitle.textContent = songPart || rawTitle;
+        trackArtist.textContent = artistPart.trim();
+        trackTitle.title = rawTitle;
+        trackArtist.title = artistPart.trim();
+        return;
+      }
+
+      if (rawTitle) {
+        trackTitle.textContent = rawTitle;
+        trackArtist.textContent = "";
+        trackTitle.title = rawTitle;
+      } else {
+        trackTitle.textContent = "Doom Stew Radio — Live";
+        trackArtist.textContent = "";
+      }
+    }
+
+    function setOnAirState(isOnline, source) {
       if (isOnline) {
         liveBadge.classList.remove("off-air");
         liveBadge.classList.add("on-air");
         liveBadgeText.textContent = "ON AIR • 24/7 LIVE";
-        if (currentTitle) {
-          trackTitle.textContent = currentTitle;
-        }
+        renderTrackMetadata(source);
       } else {
         liveBadge.classList.remove("on-air");
         liveBadge.classList.add("off-air");
         liveBadgeText.textContent = "OFF AIR";
         if (!isPlaying) {
           trackTitle.textContent = "Station Currently Off Air";
+          trackArtist.textContent = "";
           playerStatus.textContent = "Stream Offline";
         }
       }
@@ -664,9 +708,7 @@
             isPlaying = true;
             playBtn.innerHTML = "&#10074;&#10074;";
             playerStatus.textContent = "Live Stream Connected";
-            if (trackTitle.textContent === "Click Play to Tune In" || trackTitle.textContent === "Station Currently Off Air") {
-              trackTitle.textContent = "Doom Stew Records — Live Broadcast";
-            }
+            fetchNowPlaying();
           })
           .catch((err) => {
             playerStatus.textContent = "Stream is currently Off Air.";
@@ -692,10 +734,11 @@
         if (!res.ok) throw new Error("Server unreachable");
         const data = await res.json();
         const rawSource = data && data.icestats ? data.icestats.source : null;
-        const source = Array.isArray(rawSource) ? rawSource[0] : rawSource;
+        const sources = Array.isArray(rawSource) ? rawSource : [rawSource];
+        const source = sources.find(s => s && s.listenurl && s.listenurl.endsWith("/stream")) || sources[0];
 
         if (source) {
-          setOnAirState(true, source.title || null);
+          setOnAirState(true, source);
         } else {
           setOnAirState(false, null);
         }
@@ -705,7 +748,7 @@
     }
 
     fetchNowPlaying();
-    setInterval(fetchNowPlaying, 15000);
+    setInterval(fetchNowPlaying, 8000);
   </script>
 
 </body>
