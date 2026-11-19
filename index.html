@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Doom Stew Records — Live Radio</title>
+  <style>
+    /* =========================================================
+       CUSTOMIZE COLORS & BACKGROUND IMAGE HERE
+       ========================================================= */
+    :root {
+      --page-bg-color: #121212;  /* Fallback color if bg image is loading */
+      --container-bg: rgba(30, 30, 30, 0.94); /* Slight transparency lets bg peek through */
+      --border-color: #333333;   /* Subtle borders */
+      --text-main: #f0f0f0;      /* Primary text */
+      --text-muted: #999999;     /* Secondary / metadata text */
+      --accent: #629aa9;         /* Bandcamp signature link/button accent */
+      --accent-hover: #7bb4c4;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--page-bg-color);
+      
+      /* BACKGROUND IMAGE SETTINGS (Choose Option A or Option B) */
+      background-image: url("bg.jpg");
+      
+      /* Option A: Stretch/fill the whole screen & stay fixed while scrolling (Default) */
+      background-size: cover;
+      background-position: center top;
+      background-repeat: no-repeat;
+      background-attachment: fixed;
+
+      /* Option B: If you want a tiled/repeating texture instead, delete the 4 lines above and uncomment these 2 lines:
+      background-repeat: repeat;
+      background-position: top left;
+      */
+
+      color: var(--text-main);
+      font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+      line-height: 1.5;
+      padding: 20px 12px;
+      min-height: 100vh;
+    }
+
+    /* Main Bandcamp-style centered sheet */
+    .bandcamp-sheet {
+      max-width: 975px;
+      margin: 0 auto;
+      background-color: var(--container-bg);
+      border: 1px solid var(--border-color);
+      box-shadow: 0 4px 25px rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(4px);
+    }
+
+    /* Top Label Banner */
+    .label-banner {
+      background: rgba(10, 10, 10, 0.92);
+      border-bottom: 1px solid var(--border-color);
+      padding: 24px 30px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .label-banner h1 {
+      font-size: 26px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+
+    .live-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: #2a1215;
+      border: 1px solid #8b2635;
+      color: #ff6b7a;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 3px;
+      letter-spacing: 1px;
+    }
+
+    .live-dot {
+      width: 8px;
+      height: 8px;
+      background-color: #ff4d5e;
+      border-radius: 50%;
+      animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+
+    /* Three-column Bandcamp-style grid */
+    .main-grid {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr 240px;
+      gap: 28px;
+      padding: 30px;
+    }
+
+    @media (max-width: 820px) {
+      .main-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Left Column: Player & Now Playing */
+    .stream-title {
+      font-size: 22px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .stream-subtitle {
+      font-size: 14px;
+      color: var(--text-muted);
+      margin-bottom: 20px;
+    }
+
+    .stream-subtitle a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    .stream-subtitle a:hover {
+      text-decoration: underline;
+    }
+
+    /* Bandcamp-style Play Control Box */
+    .player-box {
+      background: rgba(15, 15, 15, 0.9);
+      border: 1px solid var(--border-color);
+      padding: 16px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .play-btn {
+      width: 52px;
+      height: 52px;
+      background: var(--text-main);
+      color: #111;
+      border: none;
+      border-radius: 3px;
+      font-size: 20px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: background 0.15s ease;
+    }
+
+    .play-btn:hover {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .track-info {
+      flex-grow: 1;
+      min-width: 0;
+    }
+
+    .now-playing-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--accent);
+      font-weight: 700;
+      margin-bottom: 2px;
+    }
+
+    .track-title {
+      font-size: 15px;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .player-status {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    /* Volume Slider */
+    .volume-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 24px;
+    }
+
+    input[type="range"] {
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+
+    .section-heading {
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 6px;
+      margin-bottom: 12px;
+    }
+
+    .stream-notes {
+      font-size: 13px;
+      color: #cccccc;
+    }
+
+    /* Middle Column: Cover Art */
+    .cover-art-wrap {
+      border: 1px solid var(--border-color);
+      background: #0a0a0a;
+      aspect-ratio: 1 / 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .cover-art-wrap img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .cover-placeholder {
+      text-align: center;
+      padding: 20px;
+      color: var(--text-muted);
+      font-size: 13px;
+    }
+
+    .direct-links {
+      margin-top: 12px;
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+    }
+
+    .direct-links a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    .direct-links a:hover {
+      text-decoration: underline;
+    }
+
+    /* Right Column: Bandcamp Sidebar */
+    .sidebar {
+      border-left: 1px solid var(--border-color);
+      padding-left: 24px;
+      font-size: 13px;
+    }
+
+    @media (max-width: 820px) {
+      .sidebar {
+        border-left: none;
+        border-top: 1px solid var(--border-color);
+        padding-left: 0;
+        padding-top: 20px;
+      }
+    }
+
+    .sidebar h2 {
+      font-size: 15px;
+      margin-bottom: 4px;
+    }
+
+    .sidebar .location {
+      color: var(--text-muted);
+      font-size: 12px;
+      margin-bottom: 14px;
+    }
+
+    .bandcamp-cta {
+      display: block;
+      text-align: center;
+      background: var(--accent);
+      color: #111;
+      font-weight: 700;
+      text-decoration: none;
+      padding: 8px 12px;
+      border-radius: 3px;
+      margin-bottom: 18px;
+      transition: background 0.15s ease;
+    }
+
+    .bandcamp-cta:hover {
+      background: var(--accent-hover);
+    }
+
+    .sidebar p {
+      color: #cccccc;
+      margin-bottom: 16px;
+      font-size: 12.5px;
+    }
+
+    /* Footer */
+    .footer {
+      border-top: 1px solid var(--border-color);
+      padding: 16px 30px;
+      font-size: 12px;
+      color: var(--text-muted);
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="bandcamp-sheet">
+    <!-- Top Banner -->
+    <header class="label-banner">
+      <h1>Doom Stew Records</h1>
+      <div class="live-badge">
+        <span class="live-dot"></span>
+        24/7 LABEL RADIO
+      </div>
+    </header>
+
+    <!-- Main 3-Column Bandcamp Content -->
+    <main class="main-grid">
+      
+      <!-- Column 1: Player Controls & Track Info -->
+      <div>
+        <div class="stream-title">Doom Stew Radio</div>
+        <div class="stream-subtitle">
+          broadcasting from <a href="https://doomstewrecords.bandcamp.com" target="_blank" rel="noopener">Doom Stew Records</a>
+        </div>
+
+        <div class="player-box">
+          <button class="play-btn" id="playBtn" aria-label="Play or Pause Stream">&#9654;</button>
+          <div class="track-info">
+            <div class="now-playing-label">Now Playing</div>
+            <div class="track-title" id="trackTitle">Click Play to Tune In</div>
+            <div class="player-status" id="playerStatus">Stream Ready (128kbps MP3)</div>
+          </div>
+        </div>
+
+        <div class="volume-row">
+          <label for="volumeSlider">Volume</label>
+          <input type="range" id="volumeSlider" min="0" max="1" step="0.05" value="0.85" />
+        </div>
+
+        <div class="section-heading">About This Broadcast</div>
+        <p class="stream-notes">
+          Continuous underground cuts, label releases, demos, and archive sessions curated by Doom Stew Records. Streaming live via Mixxx.
+        </p>
+      </div>
+
+      <!-- Column 2: Square Album / Label Art -->
+      <div>
+        <div class="cover-art-wrap">
+          <img src="logo.jpg" alt="Doom Stew Records Cover Art" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';" />
+          <div class="cover-placeholder" style="display:none;">
+            Upload <strong>logo.jpg</strong> to your GitHub repo to display your label artwork here.
+          </div>
+        </div>
+        <div class="direct-links">
+          <a href="#" id="directStreamLink" target="_blank" rel="noopener">Open Raw Stream URL</a>
+          <a href="https://doomstewrecords.bandcamp.com" target="_blank" rel="noopener">Browse Releases &rarr;</a>
+        </div>
+      </div>
+
+      <!-- Column 3: Right Sidebar -->
+      <aside class="sidebar">
+        <h2>Doom Stew Records</h2>
+        <div class="location">Independent Record Label</div>
+        
+        <a class="bandcamp-cta" href="https://doomstewrecords.bandcamp.com" target="_blank" rel="noopener">
+          Visit Bandcamp Store
+        </a>
+
+        <p>
+          Support the artists directly by picking up digital downloads, tapes, and vinyl on our official Bandcamp page.
+        </p>
+
+        <div class="section-heading">Broadcast Rights</div>
+        <p>
+          All recordings broadcast on this station are owned, controlled, or cleared for webcasting by Doom Stew Records.
+        </p>
+      </aside>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <span>&copy; Doom Stew Records</span>
+      <span>Powered by Mixxx &amp; Icecast</span>
+    </footer>
+  </div>
+
+  <!-- Hidden Native Audio Element -->
+  <audio id="radioAudio" preload="none"></audio>
+
+  <script>
+    const STREAM_URL = "https://radio.doomstew.com/stream";
+    const STATUS_URL = "https://radio.doomstew.com/status-json.xsl";
+
+    const audio = document.getElementById("radioAudio");
+    const playBtn = document.getElementById("playBtn");
+    const trackTitle = document.getElementById("trackTitle");
+    const playerStatus = document.getElementById("playerStatus");
+    const volumeSlider = document.getElementById("volumeSlider");
+    const directStreamLink = document.getElementById("directStreamLink");
+
+    directStreamLink.href = STREAM_URL;
+    audio.volume = volumeSlider.value;
+    let isPlaying = false;
+
+    playBtn.addEventListener("click", () => {
+      if (!isPlaying) {
+        audio.src = STREAM_URL + "?nocache=" + Date.now();
+        playerStatus.textContent = "Connecting to stream...";
+        audio.play()
+          .then(() => {
+            isPlaying = true;
+            playBtn.innerHTML = "&#10074;&#10074;";
+            playerStatus.textContent = "Live Stream Connected";
+            if (trackTitle.textContent === "Click Play to Tune In") {
+              trackTitle.textContent = "Doom Stew Records — Live Broadcast";
+            }
+          })
+          .catch((err) => {
+            playerStatus.textContent = "Unable to connect. Check stream URL or HTTPS.";
+            console.error(err);
+          });
+      } else {
+        audio.pause();
+        audio.src = "";
+        isPlaying = false;
+        playBtn.innerHTML = "&#9654;";
+        playerStatus.textContent = "Paused";
+      }
+    });
+
+    volumeSlider.addEventListener("input", (e) => {
+      audio.volume = e.target.value;
+    });
+
+    async function fetchNowPlaying() {
+      if (!STATUS_URL) return;
+      try {
+        const res = await fetch(STATUS_URL + "?_=" + Date.now());
+        const data = await res.json();
+        const source = Array.isArray(data.icestats.source)
+          ? data.icestats.source[0]
+          : data.icestats.source;
+        if (source && source.title) {
+          trackTitle.textContent = source.title;
+        }
+      } catch (e) {}
+    }
+
+    if (STATUS_URL) {
+      fetchNowPlaying();
+      setInterval(fetchNowPlaying, 15000);
+    }
+  </script>
+
+</body>
+</html>
