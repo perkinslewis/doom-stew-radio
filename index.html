@@ -649,9 +649,10 @@
     function renderTrackMetadata(source) {
       if (!source) return;
 
-      // Icecast 2.5 may provide separate artist/title fields or combined "Artist - Title"
-      const rawTitle = (source.title || source.yp_currently_playing || "").trim();
-      const rawArtist = (source.artist || "").trim();
+      // Icecast 2.5 nests Ogg Vorbis tags inside source.metadata
+      const meta = source.metadata || {};
+      const rawTitle = (meta.title || source.title || source.yp_currently_playing || "").trim();
+      const rawArtist = (meta.artist || source.artist || "").trim();
 
       if (rawArtist && rawTitle) {
         trackTitle.textContent = rawTitle;
