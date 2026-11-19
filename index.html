@@ -729,23 +729,34 @@
       audio.volume = e.target.value;
     });
 
+    let failedPolls = 0;
+
     async function fetchNowPlaying() {
       if (!STATUS_URL) return;
       try {
-        const res = await fetch(STATUS_URL + "?_=" + Date.now());
+        const res = await fetch(STATUS_URL + "?_=" + Date.now(), {
+          cache: "no-store"
+        });
         if (!res.ok) throw new Error("Server unreachable");
         const data = await res.json();
         const rawSource = data && data.icestats ? data.icestats.source : null;
-        const sources = Array.isArray(rawSource) ? rawSource : [rawSource];
+        const sources = Array.isArray(rawSource) ? rawSource : (rawSource ? [rawSource] : []);
         const source = sources.find(s => s && s.listenurl && s.listenurl.endsWith("/stream")) || sources[0];
 
         if (source) {
+          failedPolls = 0;
           setOnAirState(true, source);
         } else {
-          setOnAirState(false, null);
+          failedPolls++;
+          if (failedPolls >= 3) {
+            setOnAirState(false, null);
+          }
         }
       } catch (e) {
-        setOnAirState(false, null);
+        failedPolls++;
+        if (failedPolls >= 3) {
+          setOnAirState(false, null);
+        }
       }
     }
 
