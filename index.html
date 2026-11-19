@@ -9,12 +9,12 @@
        CUSTOMIZE COLORS & BACKGROUND IMAGE HERE
        ========================================================= */
     :root {
-      --page-bg-color: #121212;  /* Fallback color if bg image is loading */
-      --container-bg: rgba(30, 30, 30, 0.94); /* Slight transparency lets bg peek through */
-      --border-color: #333333;   /* Subtle borders */
-      --text-main: #f0f0f0;      /* Primary text */
-      --text-muted: #999999;     /* Secondary / metadata text */
-      --accent: #629aa9;         /* Bandcamp signature link/button accent */
+      --page-bg-color: #121212;
+      --container-bg: rgba(30, 30, 30, 0.94);
+      --border-color: #333333;
+      --text-main: #f0f0f0;
+      --text-muted: #999999;
+      --accent: #784FDE;
       --accent-hover: #7bb4c4;
     }
 
@@ -26,7 +26,7 @@
 
     body {
       background-color: var(--page-bg-color);
-      background-image: url("bg.jpg");
+      background-image: url("bg.webp");
       background-size: cover;
       background-position: center top;
       background-repeat: no-repeat;
@@ -35,7 +35,7 @@
       color: var(--text-main);
       font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
       line-height: 1.5;
-      padding: 20px 12px;
+      padding: 20px 12px 40px;
       min-height: 100vh;
     }
 
@@ -76,7 +76,7 @@
       text-transform: uppercase;
     }
 
-    /* Live ON AIR / OFF AIR Badge (floats neatly in top-right of header) */
+    /* Live ON AIR / OFF AIR Badge */
     .live-badge {
       position: absolute;
       top: 16px;
@@ -93,7 +93,6 @@
       transition: all 0.25s ease;
     }
 
-    /* ON AIR State */
     .live-badge.on-air {
       background: rgba(42, 18, 21, 0.92);
       border: 1px solid #8b2635;
@@ -108,7 +107,6 @@
       animation: pulse 1.5s infinite;
     }
 
-    /* OFF AIR State */
     .live-badge.off-air {
       background: rgba(25, 25, 25, 0.92);
       border: 1px solid #444444;
@@ -170,7 +168,6 @@
       text-decoration: underline;
     }
 
-    /* Bandcamp-style Play Control Box */
     .player-box {
       background: rgba(15, 15, 15, 0.9);
       border: 1px solid var(--border-color);
@@ -230,7 +227,6 @@
       margin-top: 2px;
     }
 
-    /* Volume Slider */
     .volume-row {
       display: flex;
       align-items: center;
@@ -362,6 +358,106 @@
       flex-wrap: wrap;
       gap: 10px;
     }
+
+    /* =========================================================
+       PROMO / AD CARDS SECTION BELOW FOOTER
+       ========================================================= */
+    .promo-section {
+      max-width: 975px;
+      margin: 22px auto 0;
+    }
+
+    .promo-header {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+      padding-left: 2px;
+    }
+
+    .promo-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 18px;
+    }
+
+    .promo-card {
+      background-color: var(--container-bg);
+      border: 1px solid var(--border-color);
+      box-shadow: 0 4px 18px rgba(0, 0, 0, 0.65);
+      backdrop-filter: blur(4px);
+      display: flex;
+      flex-direction: column;
+      text-decoration: none;
+      color: var(--text-main);
+      transition: border-color 0.15s ease, transform 0.15s ease;
+    }
+
+    .promo-card:hover {
+      border-color: var(--accent);
+      transform: translateY(-2px);
+    }
+
+    .promo-card-img {
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      background: #0a0a0a;
+      border-bottom: 1px solid var(--border-color);
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .promo-card-img img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .promo-img-fallback {
+      font-size: 12px;
+      color: var(--text-muted);
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+
+    .promo-card-body {
+      padding: 14px 16px;
+      flex-grow: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .promo-tag {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--accent);
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .promo-title {
+      font-size: 15px;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .promo-desc {
+      font-size: 12.5px;
+      color: #cccccc;
+      margin-bottom: 12px;
+    }
+
+    .promo-cta {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--accent);
+    }
   </style>
 </head>
 <body>
@@ -371,7 +467,7 @@
     <header class="label-banner">
       <img
         class="header-img"
-        src="header.jpg"
+        src="header.webp"
         alt="Doom Stew Records"
         onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
       />
@@ -390,7 +486,7 @@
       <div>
         <div class="stream-title">Doom Stew Radio</div>
         <div class="stream-subtitle">
-          broadcasting from <a href="https://doomstewrecords.bandcamp.com" target="_blank" rel="noopener">Doom Stew Records</a>
+          broadcasting from San Francisco, CA, US
         </div>
 
         <div class="player-box">
@@ -416,14 +512,14 @@
       <!-- Column 2: Square Album / Label Art -->
       <div>
         <div class="cover-art-wrap">
-          <img src="logo.jpg" alt="Doom Stew Records Cover Art" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';" />
+          <img src="logo.webp" alt="Doom Stew Records Cover Art" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';" />
           <div class="cover-placeholder" style="display:none;">
-            Upload <strong>logo.jpg</strong> to your GitHub repo to display your label artwork here.
+            Upload <strong>logo.webp</strong> to your GitHub repo to display your label artwork here.
           </div>
         </div>
         <div class="direct-links">
           <a href="#" id="directStreamLink" target="_blank" rel="noopener">Open Raw Stream URL</a>
-          <a href="https://doomstewrecords.bandcamp.com" target="_blank" rel="noopener">Browse Releases &rarr;</a>
+          <a href="https://doomstewrecords.com" target="_blank" rel="noopener">Browse Releases &rarr;</a>
         </div>
       </div>
 
@@ -432,33 +528,98 @@
         <h2>Doom Stew Records</h2>
         <div class="location">Independent Record Label</div>
         
-        <a class="bandcamp-cta" href="https://doomstewrecords.bandcamp.com" target="_blank" rel="noopener">
+        <a class="bandcamp-cta" href="https://doomstewrecords.com" target="_blank" rel="noopener">
           Visit Bandcamp Store
         </a>
 
         <p>
-          Support the artists directly by picking up digital downloads, tapes, and vinyl on our official Bandcamp page.
+          Grab digital releases, cassettes, and vinyl straight from the source on our Bandcamp store.
         </p>
 
-        <div class="section-heading">Broadcast Rights</div>
+        <div class="section-heading">Licensing &amp; Credits</div>
         <p>
-          All recordings broadcast on this station are owned, controlled, or cleared for webcasting by Doom Stew Records.
+          Featuring Doom Stew Records releases alongside cleared Creative Commons and public domain works. All broadcasts are properly licensed for independent streaming.
         </p>
       </aside>
 
     </main>
-
-    <!-- Footer -->
-    <footer class="footer">
-      <span>&copy; Doom Stew Records</span>
+  
+<!-- Footer with Auto-Updating Copyright Year -->
+    <div>
+	<footer class="footer">
+	      <span>&copy; <span id="copyrightYear"></span> Doom Stew Records</span>
       <span>Powered by Mixxx &amp; Icecast</span>
     </footer>
-  </div>
+      </div>
+	  </div>
 
+  <!-- =========================================================
+       PROMO / SPONSOR CARDS SECTION (EDIT OR DUPLICATE CARDS)
+       ========================================================= -->
+  <section class="promo-section" aria-label="Featured Releases and Sponsors">
+    <div class="promo-header">Featured &amp; Sponsored</div>
+    <div class="promo-grid">
+
+      <!-- Card 1 -->
+      <a class="promo-card" href="https://forms.gle/BbKPBGE2ncka4Xh59" target="_blank" rel="noopener">
+        <div class="promo-card-img">
+          <img src="promo1.webp" alt="Featured Release" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';" />
+          <span class="promo-img-fallback" style="display:none;">Upload promo1.webp (16:9)</span>
+        </div>
+        <div class="promo-card-body">
+          <div>
+            <div class="promo-tag">Radio Submissions</div>
+            <div class="promo-title">Get Your Music On The Radio</div>
+            <div class="promo-desc">Send us your songs and give us permission, and we'll add your music to our growing library.</div>
+          </div>
+          <div class="promo-cta">Submit Now &rarr;</div>
+        </div>
+      </a>
+
+      <!-- Card 2 -->
+      <a class="promo-card" href="https://doomstewrecords.bandcamp.com" target="_blank" rel="noopener">
+        <div class="promo-card-img">
+          <img src="promo2.webp" alt="Merch and Apparel" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';" />
+          <span class="promo-img-fallback" style="display:none;">Upload promo2.webp (16:9)</span>
+        </div>
+        <div class="promo-card-body">
+          <div>
+            <div class="promo-tag">Merch &amp; Physical</div>
+            <div class="promo-title">Doom Stew Shirts &amp; Patches</div>
+            <div class="promo-desc">Heavyweight screen-printed tees, woven patches, and physical catalog bundles.</div>
+          </div>
+          <div class="promo-cta">Browse Merch &rarr;</div>
+        </div>
+      </a>
+
+      <!-- Card 3 (Sponsor / Ad Slot) -->
+      <a class="promo-card" href="mailto:info@doomstew.com" target="_blank" rel="noopener">
+        <div class="promo-card-img">
+          <img src="promo3.webp" alt="Sponsor Spot" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';" />
+          <span class="promo-img-fallback" style="display:none;">Sponsor / Ad Spot</span>
+        </div>
+        <div class="promo-card-body">
+          <div>
+            <div class="promo-tag">Sponsor / Promo</div>
+            <div class="promo-title">Advertise on Doom Stew Radio</div>
+            <div class="promo-desc">Promote your band, label, zine, or gear directly to underground heavy &amp; experimental listeners.</div>
+          </div>
+          <div class="promo-cta">Get in Touch &rarr;</div>
+        </div>
+      </a>
+    </div>
+	<br>
+  </section>
+  
+	
+ 
   <!-- Hidden Native Audio Element -->
   <audio id="radioAudio" preload="none"></audio>
 
   <script>
+    // Auto-update copyright year
+    document.getElementById("copyrightYear").textContent = new Date().getFullYear();
+
     const STREAM_URL = "https://stream.doomstew.com/stream";
     const STATUS_URL = "https://stream.doomstew.com/status-json.xsl";
 
