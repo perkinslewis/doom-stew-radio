@@ -211,7 +211,7 @@
       letter-spacing: 1px;
       color: var(--accent);
       font-weight: 700;
-      margin-bottom: 2px;
+      margin-bottom: 3px;
     }
 
     .track-title {
@@ -228,12 +228,6 @@
       line-height: 1.3;
       margin-top: 3px;
       word-break: break-word;
-    }
-
-    .player-status {
-      font-size: 11.5px;
-      color: var(--text-muted);
-      margin-top: 4px;
     }
 
     .volume-row {
@@ -628,13 +622,12 @@
     document.getElementById("copyrightYear").textContent = new Date().getFullYear();
 
     const STREAM_URL = "https://stream.doomstew.com/stream";
-    const STATUS_URL = "https://stream.doomstew.com/status.xsl";
+    const STATUS_URL = "https://stream.doomstew.com/status-json.xsl";
 
     const audio = document.getElementById("radioAudio");
     const playBtn = document.getElementById("playBtn");
     const trackTitle = document.getElementById("trackTitle");
     const trackArtist = document.getElementById("trackArtist");
-    const playerStatus = document.getElementById("playerStatus");
     const volumeSlider = document.getElementById("volumeSlider");
     const directStreamLink = document.getElementById("directStreamLink");
     const liveBadge = document.getElementById("liveBadge");
@@ -643,6 +636,7 @@
     directStreamLink.href = STREAM_URL;
     audio.volume = volumeSlider.value;
     let isPlaying = false;
+    let lastKnownTrackKey = "";
 
     // Decode HTML entities (&amp;, &#39;, etc.) and repair double-encoded UTF-8 mojibake (Cyrillic / Polish)
     function normalizeMetadataText(raw) {
@@ -710,6 +704,15 @@
 
       const { artist, song } = parseTrackMetadata(rawTitle, rawArtist);
 
+      // Ignore empty metadata flashes once a real track is already displayed
+      if (!artist && (!song || song === "Doom Stew Radio — Live") && lastKnownTrackKey) {
+        return;
+      }
+
+      const trackKey = `${artist}::${song}`;
+      if (trackKey === lastKnownTrackKey) return;
+      lastKnownTrackKey = trackKey;
+
       trackTitle.textContent = song;
       trackArtist.textContent = artist;
       trackTitle.title = artist ? `${artist} — ${song}` : song;
@@ -727,9 +730,9 @@
         liveBadge.classList.add("off-air");
         liveBadgeText.textContent = "OFF AIR";
         if (!isPlaying) {
+          lastKnownTrackKey = "";
           trackTitle.textContent = "Station Currently Off Air";
           trackArtist.textContent = "";
-          playerStatus.textContent = "Stream Offline";
         }
       }
     }
@@ -737,16 +740,21 @@
     playBtn.addEventListener("click", () => {
       if (!isPlaying) {
         audio.src = STREAM_URL + "?nocache=" + Date.now();
-        playerStatus.textContent = "Connecting to stream...";
+        if (!lastKnownTrackKey) {
+          trackTitle.textContent = "Connecting to stream...";
+          trackArtist.textContent = "";
+        }
         audio.play()
           .then(() => {
             isPlaying = true;
             playBtn.innerHTML = "&#10074;&#10074;";
-            playerStatus.textContent = "Live Stream Connected";
             fetchNowPlaying();
           })
           .catch((err) => {
-            playerStatus.textContent = "Stream is currently Off Air.";
+            if (!lastKnownTrackKey) {
+              trackTitle.textContent = "Stream Currently Off Air";
+              trackArtist.textContent = "";
+            }
             console.error(err);
           });
       } else {
@@ -754,7 +762,6 @@
         audio.src = "";
         isPlaying = false;
         playBtn.innerHTML = "&#9654;";
-        playerStatus.textContent = "Paused";
       }
     });
 
@@ -772,48 +779,19 @@
         });
         if (!res.ok) throw new Error("Server unreachable");
 
-        // Read raw bytes and decode explicitly as UTF-8 for Cyrillic/Polish characters
+        // Decode explicitly as UTF-8 so Cyrillic (RU/UA) and Polish characters never scramble
         const buffer = await res.arrayBuffer();
-        const html = new TextDecoder("utf-8").decode(buffer);
-        const doc = new DOMParser().parseFromString(html, "text/html");
+        const rawText = new TextDecoder("utf-8").decode(buffer);
+        const data = JSON.parse(rawText);
 
-        let currentSong = "";
+        const sources = data?.icestats?.source;
+        const sourceList = Array.isArray(sources) ? sources : sources ? [sources] : [];
+        const streamSource =
+          sourceList.find((s) => (s.listenurl || "").includes("/stream")) || sourceList[0];
 
-        // Prefer the /stream mountpoint block if multiple mounts exist
-        const mountHeaders = Array.from(doc.querySelectorAll("h3, .mounthead"));
-        const streamHeader = mountHeaders.find((el) => el.textContent.includes("/stream"));
-        const searchRoot = streamHeader ? streamHeader.closest(".roundbox, .newscontent, div") || doc : doc;
-
-        searchRoot.querySelectorAll("tr").forEach((row) => {
-          const cells = row.querySelectorAll("td");
-          if (cells.length >= 2) {
-            const label = cells[0].textContent.trim().toLowerCase();
-            const val = cells[1].textContent.trim();
-            if (label.includes("currently playing") || label.includes("current song") || label === "title:") {
-              if (val) currentSong = val;
-            }
-          }
-        });
-
-        // Fallback across full document if mount-scoped lookup came up empty
-        if (!currentSong && searchRoot !== doc) {
-          doc.querySelectorAll("tr").forEach((row) => {
-            const cells = row.querySelectorAll("td");
-            if (cells.length >= 2) {
-              const label = cells[0].textContent.trim().toLowerCase();
-              const val = cells[1].textContent.trim();
-              if (label.includes("currently playing") || label.includes("current song") || label === "title:") {
-                if (val) currentSong = val;
-              }
-            }
-          });
-        }
-
-        const isLive = html.includes("/stream") || currentSong.length > 0;
-
-        if (isLive) {
+        if (streamSource) {
           failedPolls = 0;
-          setOnAirState(true, { title: currentSong });
+          setOnAirState(true, streamSource);
         } else {
           failedPolls++;
           if (failedPolls >= 3) {
