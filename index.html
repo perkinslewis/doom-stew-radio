@@ -647,39 +647,76 @@
     audio.volume = volumeSlider.value;
     let isPlaying = false;
 
+    // Decode HTML entities (&amp;, &#39;, etc.) and repair double-encoded UTF-8 mojibake (Cyrillic / Polish)
+    function normalizeMetadataText(raw) {
+      if (!raw) return "";
+      const decoderEl = document.createElement("textarea");
+      decoderEl.innerHTML = raw;
+      let text = decoderEl.value.trim();
+
+      // Fix UTF-8 bytes that Icecast interpreted as Latin-1 (common with Cyrillic/Polish tags)
+      try {
+        if (/[\u00C0-\u00FF]{2,}/.test(text)) {
+          const bytes = new Uint8Array([...text].map((ch) => ch.charCodeAt(0) & 0xff));
+          const repaired = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+          if (repaired) text = repaired;
+        }
+      } catch (_) {
+        // Keep original text if already valid Unicode
+      }
+
+      // Strip file extension if Mixxx fell back to raw filename
+      text = text.replace(/\.(mp3|flac|wav|ogg|m4a|aac)$/i, "");
+      return text.trim();
+    }
+
+    function parseTrackMetadata(rawTitle, rawArtist) {
+      const cleanArtist = normalizeMetadataText(rawArtist);
+      const cleanTitle = normalizeMetadataText(rawTitle);
+
+      if (cleanArtist && cleanTitle) {
+        return { artist: cleanArtist, song: cleanTitle };
+      }
+
+      if (!cleanTitle) {
+        return { artist: "", song: "Doom Stew Radio — Live" };
+      }
+
+      // 1. Standard spaced hyphen, en-dash, or em-dash: "Artist - Song", "Artist – Song", "Artist — Song"
+      const spacedParts = cleanTitle.split(/\s+[-–—]\s+/);
+      if (spacedParts.length >= 2) {
+        return {
+          artist: spacedParts[0].trim(),
+          song: spacedParts.slice(1).join(" - ").trim()
+        };
+      }
+
+      // 2. Unspaced dash fallback: "Artist-Song"
+      const tightParts = cleanTitle.split(/[-–—]/);
+      if (tightParts.length >= 2) {
+        return {
+          artist: tightParts[0].trim(),
+          song: tightParts.slice(1).join("-").trim()
+        };
+      }
+
+      // 3. Single string (e.g., Station IDs or untagged tracks)
+      return { artist: "", song: cleanTitle };
+    }
+
     function renderTrackMetadata(source) {
       if (!source) return;
 
       const meta = source.metadata || {};
-      const rawTitle = (meta.title || source.title || source.yp_currently_playing || "").trim();
-      const rawArtist = (meta.artist || source.artist || "").trim();
+      const rawTitle = meta.title || source.title || source.yp_currently_playing || "";
+      const rawArtist = meta.artist || source.artist || "";
 
-      if (rawArtist && rawTitle) {
-        trackTitle.textContent = rawTitle;
-        trackArtist.textContent = rawArtist;
-        trackTitle.title = `${rawArtist} — ${rawTitle}`;
-        trackArtist.title = rawArtist;
-        return;
-      }
+      const { artist, song } = parseTrackMetadata(rawTitle, rawArtist);
 
-      if (rawTitle.includes(" - ")) {
-        const [artistPart, ...songParts] = rawTitle.split(" - ");
-        const songPart = songParts.join(" - ").trim();
-        trackTitle.textContent = songPart || rawTitle;
-        trackArtist.textContent = artistPart.trim();
-        trackTitle.title = rawTitle;
-        trackArtist.title = artistPart.trim();
-        return;
-      }
-
-      if (rawTitle) {
-        trackTitle.textContent = rawTitle;
-        trackArtist.textContent = "";
-        trackTitle.title = rawTitle;
-      } else {
-        trackTitle.textContent = "Doom Stew Radio — Live";
-        trackArtist.textContent = "";
-      }
+      trackTitle.textContent = song;
+      trackArtist.textContent = artist;
+      trackTitle.title = artist ? `${artist} — ${song}` : song;
+      trackArtist.title = artist;
     }
 
     function setOnAirState(isOnline, source) {
@@ -737,20 +774,43 @@
           cache: "no-store"
         });
         if (!res.ok) throw new Error("Server unreachable");
-        const html = await res.text();
+
+        // Read raw bytes and decode explicitly as UTF-8 for Cyrillic/Polish characters
+        const buffer = await res.arrayBuffer();
+        const html = new TextDecoder("utf-8").decode(buffer);
         const doc = new DOMParser().parseFromString(html, "text/html");
 
         let currentSong = "";
-        doc.querySelectorAll("tr").forEach((row) => {
+
+        // Prefer the /stream mountpoint block if multiple mounts exist
+        const mountHeaders = Array.from(doc.querySelectorAll("h3, .mounthead"));
+        const streamHeader = mountHeaders.find((el) => el.textContent.includes("/stream"));
+        const searchRoot = streamHeader ? streamHeader.closest(".roundbox, .newscontent, div") || doc : doc;
+
+        searchRoot.querySelectorAll("tr").forEach((row) => {
           const cells = row.querySelectorAll("td");
           if (cells.length >= 2) {
             const label = cells[0].textContent.trim().toLowerCase();
             const val = cells[1].textContent.trim();
             if (label.includes("currently playing") || label.includes("current song") || label === "title:") {
-              currentSong = val;
+              if (val) currentSong = val;
             }
           }
         });
+
+        // Fallback across full document if mount-scoped lookup came up empty
+        if (!currentSong && searchRoot !== doc) {
+          doc.querySelectorAll("tr").forEach((row) => {
+            const cells = row.querySelectorAll("td");
+            if (cells.length >= 2) {
+              const label = cells[0].textContent.trim().toLowerCase();
+              const val = cells[1].textContent.trim();
+              if (label.includes("currently playing") || label.includes("current song") || label === "title:") {
+                if (val) currentSong = val;
+              }
+            }
+          });
+        }
 
         const isLive = html.includes("/stream") || currentSong.length > 0;
 
