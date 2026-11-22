@@ -215,21 +215,19 @@
     }
 
     .track-title {
-      font-size: 15px;
+      font-size: 16px;
       font-weight: 700;
       color: var(--text-main);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      line-height: 1.3;
+      word-break: break-word;
     }
 
     .track-artist {
-      font-size: 13px;
+      font-size: 13.5px;
       color: #cccccc;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      margin-top: 1px;
+      line-height: 1.3;
+      margin-top: 3px;
+      word-break: break-word;
     }
 
     .player-status {
@@ -506,7 +504,6 @@
             <div class="now-playing-label">Now Playing</div>
             <div class="track-title" id="trackTitle">Click Play to Tune In</div>
             <div class="track-artist" id="trackArtist"></div>
-            <div class="player-status" id="playerStatus">Stream Ready (128kbps MP3)</div>
           </div>
         </div>
 
