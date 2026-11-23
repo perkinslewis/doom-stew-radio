@@ -495,7 +495,7 @@
         <div class="player-box">
           <button class="play-btn" id="playBtn" aria-label="Play or Pause Stream">&#9654;</button>
           <div class="track-info">
-            <div class="now-playing-label">Now Playing</div>
+            <div class="now-playing-label" id="nowPlayingLabel">Now Playing</div>
             <div class="track-title" id="trackTitle">Click Play to Tune In</div>
             <div class="track-artist" id="trackArtist"></div>
           </div>
@@ -508,14 +508,19 @@
 
         <div class="section-heading">About This Broadcast</div>
         <p class="stream-notes">
-          Continuous underground cuts, label releases, demos, and archive sessions curated by Doom Stew Records. Streaming live via Mixxx.
+          Continuous underground cuts, label releases, demos, and archive sessions curated by Doom Stew Records. Streaming live via AzuraCast.
         </p>
       </div>
 
       <!-- Column 2: Square Album / Label Art -->
       <div>
         <div class="cover-art-wrap">
-          <img src="logo.webp" alt="Doom Stew Records Cover Art" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';" />
+          <img
+            id="coverArtImg"
+            src="logo.webp"
+            alt="Doom Stew Records Cover Art"
+            onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
+          />
           <div class="cover-placeholder" style="display:none;">
             Upload <strong>logo.webp</strong> to your GitHub repo to display your label artwork here.
           </div>
@@ -551,7 +556,7 @@
     <div>
       <footer class="footer">
         <span>&copy; <span id="copyrightYear"></span> Doom Stew Records</span>
-        <span>Powered by Mixxx &amp; Icecast</span>
+        <span>Powered by AzuraCast</span>
       </footer>
     </div>
   </div>
@@ -621,60 +626,66 @@
     // Auto-update copyright year
     document.getElementById("copyrightYear").textContent = new Date().getFullYear();
 
-    const STREAM_URL = "https://stream.doomstew.com/stream";
-    const STATUS_URL = "https://stream.doomstew.com/status-json.xsl";
+    // =========================================================
+    // AZURACAST CONFIGURATION
+    // Update AZURACAST_BASE_URL once your public HTTPS domain/tunnel
+    // is pointed at your workstation (no trailing slash).
+    // =========================================================
+    const AZURACAST_BASE_URL = "https://stream.doomstew.com";
+    const STATION_SHORTCODE = "doom_stew_radio";
+
+    const DEFAULT_STREAM_URL = `${AZURACAST_BASE_URL}/listen/${STATION_SHORTCODE}/radio.mp3`;
+    const NOW_PLAYING_API_URL = `${AZURACAST_BASE_URL}/api/nowplaying/${STATION_SHORTCODE}`;
+    const DEFAULT_COVER_ART = "logo.webp";
 
     const audio = document.getElementById("radioAudio");
     const playBtn = document.getElementById("playBtn");
+    const nowPlayingLabel = document.getElementById("nowPlayingLabel");
     const trackTitle = document.getElementById("trackTitle");
     const trackArtist = document.getElementById("trackArtist");
+    const coverArtImg = document.getElementById("coverArtImg");
     const volumeSlider = document.getElementById("volumeSlider");
     const directStreamLink = document.getElementById("directStreamLink");
     const liveBadge = document.getElementById("liveBadge");
     const liveBadgeText = document.getElementById("liveBadgeText");
 
-    directStreamLink.href = STREAM_URL;
+    let activeStreamUrl = DEFAULT_STREAM_URL;
+    directStreamLink.href = activeStreamUrl;
     audio.volume = volumeSlider.value;
     let isPlaying = false;
     let lastKnownTrackKey = "";
+    let lastKnownArtUrl = DEFAULT_COVER_ART;
 
-    // Decode HTML entities (&amp;, &#39;, etc.) and repair double-encoded UTF-8 mojibake (Cyrillic / Polish)
+    // Decode HTML entities and strip accidental file extensions
     function normalizeMetadataText(raw) {
       if (!raw) return "";
       const decoderEl = document.createElement("textarea");
       decoderEl.innerHTML = raw;
       let text = decoderEl.value.trim();
-
-      // Fix UTF-8 bytes that Icecast interpreted as Latin-1 (common with Cyrillic/Polish tags)
-      try {
-        if (/[\u00C0-\u00FF]{2,}/.test(text)) {
-          const bytes = new Uint8Array([...text].map((ch) => ch.charCodeAt(0) & 0xff));
-          const repaired = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
-          if (repaired) text = repaired;
-        }
-      } catch (_) {
-        // Keep original text if already valid Unicode
-      }
-
-      // Strip file extension if Mixxx fell back to raw filename
       text = text.replace(/\.(mp3|flac|wav|ogg|m4a|aac)$/i, "");
       return text.trim();
     }
 
-    function parseTrackMetadata(rawTitle, rawArtist) {
-      const cleanArtist = normalizeMetadataText(rawArtist);
-      const cleanTitle = normalizeMetadataText(rawTitle);
+    function parseAzuraSong(songObj) {
+      if (!songObj) {
+        return { artist: "", song: "Doom Stew Radio — Live" };
+      }
+
+      const cleanArtist = normalizeMetadataText(songObj.artist);
+      const cleanTitle = normalizeMetadataText(songObj.title);
+      const cleanText = normalizeMetadataText(songObj.text);
 
       if (cleanArtist && cleanTitle) {
         return { artist: cleanArtist, song: cleanTitle };
       }
 
-      if (!cleanTitle) {
+      const fallbackRaw = cleanTitle || cleanText;
+      if (!fallbackRaw) {
         return { artist: "", song: "Doom Stew Radio — Live" };
       }
 
-      // 1. Standard spaced hyphen, en-dash, or em-dash: "Artist - Song", "Artist – Song", "Artist — Song"
-      const spacedParts = cleanTitle.split(/\s+[-–—]\s+/);
+      // Split "Artist - Song" if AzuraCast combined them into text/title
+      const spacedParts = fallbackRaw.split(/\s+[-–—]\s+/);
       if (spacedParts.length >= 2) {
         return {
           artist: spacedParts[0].trim(),
@@ -682,27 +693,29 @@
         };
       }
 
-      // 2. Unspaced dash fallback: "Artist-Song"
-      const tightParts = cleanTitle.split(/[-–—]/);
-      if (tightParts.length >= 2) {
-        return {
-          artist: tightParts[0].trim(),
-          song: tightParts.slice(1).join("-").trim()
-        };
-      }
-
-      // 3. Single string (e.g., Station IDs or untagged tracks)
-      return { artist: "", song: cleanTitle };
+      return { artist: "", song: fallbackRaw };
     }
 
-    function renderTrackMetadata(source) {
-      if (!source) return;
+    function updateCoverArt(artUrl) {
+      // Ignore AzuraCast's generic default placeholder image so logo.webp stays intact
+      const isGenericPlaceholder = !artUrl || artUrl.includes("generic_song");
+      const targetArt = isGenericPlaceholder ? DEFAULT_COVER_ART : artUrl;
 
-      const meta = source.metadata || {};
-      const rawTitle = meta.title || source.title || source.yp_currently_playing || "";
-      const rawArtist = meta.artist || source.artist || "";
+      if (targetArt === lastKnownArtUrl) return;
+      lastKnownArtUrl = targetArt;
 
-      const { artist, song } = parseTrackMetadata(rawTitle, rawArtist);
+      coverArtImg.style.display = "block";
+      if (coverArtImg.nextElementSibling) {
+        coverArtImg.nextElementSibling.style.display = "none";
+      }
+      coverArtImg.src = targetArt;
+    }
+
+    function renderAzuraMetadata(payload) {
+      if (!payload) return;
+
+      const songObj = payload?.now_playing?.song || null;
+      const { artist, song } = parseAzuraSong(songObj);
 
       // Ignore empty metadata flashes once a real track is already displayed
       if (!artist && (!song || song === "Doom Stew Radio — Live") && lastKnownTrackKey) {
@@ -710,25 +723,37 @@
       }
 
       const trackKey = `${artist}::${song}`;
-      if (trackKey === lastKnownTrackKey) return;
-      lastKnownTrackKey = trackKey;
+      if (trackKey !== lastKnownTrackKey) {
+        lastKnownTrackKey = trackKey;
+        trackTitle.textContent = song;
+        trackArtist.textContent = artist;
+        trackTitle.title = artist ? `${artist} — ${song}` : song;
+        trackArtist.title = artist;
+      }
 
-      trackTitle.textContent = song;
-      trackArtist.textContent = artist;
-      trackTitle.title = artist ? `${artist} — ${song}` : song;
-      trackArtist.title = artist;
+      updateCoverArt(songObj?.art || "");
     }
 
-    function setOnAirState(isOnline, source) {
+    function setOnAirState(isOnline, payload) {
       if (isOnline) {
+        const isLiveDj = Boolean(payload?.live?.is_live);
+        const streamerName = normalizeMetadataText(payload?.live?.streamer_name);
+
         liveBadge.classList.remove("off-air");
         liveBadge.classList.add("on-air");
-        liveBadgeText.textContent = "ON AIR • 24/7 LIVE";
-        renderTrackMetadata(source);
+        liveBadgeText.textContent = isLiveDj ? "LIVE DJ • ON AIR" : "ON AIR • 24/7 LIVE";
+        nowPlayingLabel.textContent = isLiveDj && streamerName
+          ? `Live DJ: ${streamerName}`
+          : "Now Playing";
+
+        renderAzuraMetadata(payload);
       } else {
         liveBadge.classList.remove("on-air");
         liveBadge.classList.add("off-air");
         liveBadgeText.textContent = "OFF AIR";
+        nowPlayingLabel.textContent = "Now Playing";
+        updateCoverArt(DEFAULT_COVER_ART);
+
         if (!isPlaying) {
           lastKnownTrackKey = "";
           trackTitle.textContent = "Station Currently Off Air";
@@ -739,7 +764,7 @@
 
     playBtn.addEventListener("click", () => {
       if (!isPlaying) {
-        audio.src = STREAM_URL + "?nocache=" + Date.now();
+        audio.src = activeStreamUrl + "?nocache=" + Date.now();
         if (!lastKnownTrackKey) {
           trackTitle.textContent = "Connecting to stream...";
           trackArtist.textContent = "";
@@ -772,26 +797,26 @@
     let failedPolls = 0;
 
     async function fetchNowPlaying() {
-      if (!STATUS_URL) return;
+      if (!NOW_PLAYING_API_URL) return;
       try {
-        const res = await fetch(STATUS_URL + "?_=" + Date.now(), {
+        const res = await fetch(NOW_PLAYING_API_URL + "?_=" + Date.now(), {
           cache: "no-store"
         });
-        if (!res.ok) throw new Error("Server unreachable");
+        if (!res.ok) throw new Error("AzuraCast API unreachable");
 
-        // Decode explicitly as UTF-8 so Cyrillic (RU/UA) and Polish characters never scramble
-        const buffer = await res.arrayBuffer();
-        const rawText = new TextDecoder("utf-8").decode(buffer);
-        const data = JSON.parse(rawText);
+        const data = await res.json();
 
-        const sources = data?.icestats?.source;
-        const sourceList = Array.isArray(sources) ? sources : sources ? [sources] : [];
-        const streamSource =
-          sourceList.find((s) => (s.listenurl || "").includes("/stream")) || sourceList[0];
+        // Automatically sync the stream URL from AzuraCast's station config if provided
+        const apiListenUrl = data?.station?.listen_url;
+        if (apiListenUrl && apiListenUrl.startsWith("https://")) {
+          activeStreamUrl = apiListenUrl;
+          directStreamLink.href = activeStreamUrl;
+        }
 
-        if (streamSource) {
+        const isOnline = Boolean(data?.is_online || data?.now_playing?.song);
+        if (isOnline) {
           failedPolls = 0;
-          setOnAirState(true, streamSource);
+          setOnAirState(true, data);
         } else {
           failedPolls++;
           if (failedPolls >= 3) {
