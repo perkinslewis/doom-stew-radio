@@ -1,0 +1,23 @@
+# Doom Stew Radio
+
+> Independent 24/7 underground internet radio station by Doom Stew Records broadcasting doom, sludge, stoner rock, thrash, death metal, industrial, darkwave, and late-night drone.
+
+## Stream & Links
+- [Live Web Player](https://radio.doomstew.com/): Browser player with live track metadata, cover art, and weekly schedule.
+- [Direct Audio Stream (MP3)](https://stream.doomstew.com/listen/doom_stew_radio/radio.mp3): 24/7 Icecast/AzuraCast audio stream.
+- [Doom Stew Records Bandcamp](https://doomstewrecords.com): Official digital releases, cassettes, vinyl, and merch.
+- [Artist Radio Submissions](https://forms.gle/BbKPBGE2ncka4Xh59): Independent artist submission form for airplay consideration.
+
+## Weekly Programming Schedule
+- **Flatline FM** (Daily, 2:00 AM – 6:00 AM): Late-night coldwave, darkwave, and ambient drift.
+- **Mourning Rot** (Mon – Fri, 6:00 AM – 10:00 AM): Bleak morning doom and funeral sludge.
+- **Total Bangover** (Sat – Sun, 6:00 AM – 10:00 AM): Weekend recovery riffs and hazy stoner rock.
+- **Crate Digger** (Mon – Sat, 10:00 AM – 12:00 PM): Rare underground cuts and deep label archives.
+- **Hair of the Dog** (Sunday, 10:00 AM – 12:00 PM): Heavy Sunday morning fuzz and slow-burn grooves.
+- **Face Melter** (Mon – Fri, 12:00 PM – 3:00 PM): Midday thrash, punk, and high-speed riffs.
+- **Industrial Grind** (Mon – Fri 3:00 PM – 6:00 PM; Sat 10:00 PM – 2:00 AM): Harsh industrial noise, EBM, and mechanical distortion.
+- **Psychodaze** (Saturday, 12:00 PM – 6:00 PM): Trippy heavy psych, acid rock, and space jams.
+- **Sludge Sundae** (Sunday, 12:00 PM – 6:00 PM): Thick, downtuned Sunday sludge and swamp riffs.
+- **Riff Ritual** (Daily, 6:00 PM – 10:00 PM): Primetime heavy metal, doom, and classic riff worship.
+- **Death Rattle** (Mon – Fri, 10:00 PM – 2:00 AM): Late-night death metal, black metal, and extreme noise.
+- **Last Rites** (Sunday, 10:00 PM – 2:00 AM): Midnight goth, dark ambient, and closing-hours gloom.
