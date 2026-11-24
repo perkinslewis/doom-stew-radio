@@ -388,7 +388,7 @@
     }
 
     /* =========================================================
-       POPUP MODALS (SCHEDULE, ABOUT, TERMS)
+       POPUP MODALS (SCHEDULE, ABOUT, TERMS, SONG HISTORY)
        ========================================================= */
     .dsr-modal-overlay {
       display: none;
@@ -490,6 +490,55 @@
       font-weight: 700;
       color: #e4e4e7;
       white-space: nowrap;
+    }
+
+    .dsr-history-item {
+      background: rgba(15, 15, 15, 0.9);
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      padding: 8px 10px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .dsr-history-art {
+      width: 42px;
+      height: 42px;
+      border-radius: 3px;
+      object-fit: cover;
+      background: #0a0a0a;
+      border: 1px solid var(--border-color);
+      flex-shrink: 0;
+    }
+
+    .dsr-history-info {
+      flex-grow: 1;
+      min-width: 0;
+    }
+
+    .dsr-history-title {
+      font-weight: 700;
+      color: var(--text-main);
+      font-size: 13.5px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .dsr-history-artist {
+      font-size: 12px;
+      color: #cccccc;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .dsr-history-time {
+      font-size: 11px;
+      color: var(--text-muted);
+      white-space: nowrap;
+      flex-shrink: 0;
     }
 
     /* =========================================================
@@ -657,7 +706,7 @@
         </div>
         <div class="direct-links">
           <a href="#" id="directStreamLink" target="_blank" rel="noopener">Open Raw Stream URL</a>
-          <a href="https://doomstewrecords.com" target="_blank" rel="noopener">Browse Releases &rarr;</a>
+          <a href="#history" data-dsr="history">Song History</a>
         </div>
       </div>
 
@@ -754,7 +803,7 @@
     <br>
   </section>
 
-  <!-- Schedule / About / Terms Modal Overlay -->
+  <!-- Schedule / About / Terms / Song History Modal Overlay -->
   <div class="dsr-modal-overlay" id="dsrInfoModal" role="dialog" aria-modal="true" aria-labelledby="dsrModalTitle">
     <div class="dsr-modal-box">
       <div class="dsr-modal-header">
@@ -773,7 +822,7 @@
     document.getElementById("copyrightYear").textContent = new Date().getFullYear();
 
     // =========================================================
-    // SCHEDULE, ABOUT & TERMS POPUP MODALS
+    // SCHEDULE, ABOUT, TERMS & SONG HISTORY POPUP MODALS
     // =========================================================
     const SHOW_SCHEDULE = [
       { name: "Flatline FM",      days: "Daily",           hours: "2:00 AM – 6:00 AM",  bg: "#1e1b4b", border: "#818cf8" },
@@ -821,14 +870,58 @@
           <p><strong>Copyright &amp; Artists:</strong> All musical recordings remain the sole property of their respective artists, bands, and record labels. If you hear something you love, support the artists directly.</p>
           <p><strong>Availability:</strong> Show times, playlists, and stream availability are provided as-is and may change without prior notice.</p>
         `
+      },
+      history: {
+        title: "Doom Stew Radio — Recently Played",
+        body: `<p style="color:var(--text-muted);">Loading recent tracks...</p>`
       }
     };
 
     const dsrModal = document.getElementById("dsrInfoModal");
     const dsrModalTitle = document.getElementById("dsrModalTitle");
     const dsrModalBody = document.getElementById("dsrModalBody");
+    let latestSongHistory = [];
+
+    function formatPlayedAgo(unixSeconds) {
+      if (!unixSeconds) return "";
+      const diffMin = Math.max(1, Math.floor((Date.now() / 1000 - unixSeconds) / 60));
+      if (diffMin < 60) return `${diffMin}m ago`;
+      const hrs = Math.floor(diffMin / 60);
+      return `${hrs}h ${diffMin % 60}m ago`;
+    }
+
+    function buildHistoryHtml(historyList) {
+      if (!Array.isArray(historyList) || historyList.length === 0) {
+        return `<p style="color:var(--text-muted);">No recent song history available yet.</p>`;
+      }
+
+      return `
+        <div class="dsr-schedule-list">
+          ${historyList.slice(0, 15).map(entry => {
+            const { artist, song } = parseAzuraSong(entry.song);
+            const rawArt = entry?.song?.art || "";
+            const art = (!rawArt || rawArt.includes("generic_song")) ? DEFAULT_COVER_ART : rawArt;
+            const timeLabel = formatPlayedAgo(entry.played_at);
+
+            return `
+              <div class="dsr-history-item">
+                <img class="dsr-history-art" src="${art}" alt="" onerror="this.src='${DEFAULT_COVER_ART}';" />
+                <div class="dsr-history-info">
+                  <div class="dsr-history-title">${song}</div>
+                  <div class="dsr-history-artist">${artist || "Doom Stew Radio"}</div>
+                </div>
+                <div class="dsr-history-time">${timeLabel}</div>
+              </div>
+            `;
+          }).join("")}
+        </div>
+      `;
+    }
 
     function openDsrModal(key) {
+      if (key === "history") {
+        DSR_MODAL_PAGES.history.body = buildHistoryHtml(latestSongHistory);
+      }
       const page = DSR_MODAL_PAGES[key];
       if (!page) return;
       dsrModalTitle.textContent = page.title;
@@ -1036,6 +1129,13 @@
         if (!res.ok) throw new Error("AzuraCast API unreachable");
 
         const data = await res.json();
+
+        if (Array.isArray(data?.song_history)) {
+          latestSongHistory = data.song_history;
+          if (dsrModal.style.display === "flex" && dsrModalTitle.textContent.includes("Recently Played")) {
+            dsrModalBody.innerHTML = buildHistoryHtml(latestSongHistory);
+          }
+        }
 
         // Automatically sync the stream URL from AzuraCast's station config if provided
         const apiListenUrl = data?.station?.listen_url;
